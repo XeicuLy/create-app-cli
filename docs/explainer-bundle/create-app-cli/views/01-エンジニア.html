@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>xeikit Go CLI — エンジニアビュー</title>
+<style>
+:root{
+  --bg:#f7f8fa;--card:#fff;--border:#e3e6ec;--text:#1d2330;--muted:#5b6577;
+  --accent:#2b6cff;--green:#1a9e6b;--amber:#c98a00;--red:#d6453c;--chip:#eef1f6;
+  --code-bg:#f0f2f7;
+}
+:root[data-theme="dark"]{
+  --bg:#0f1115;--card:#171a21;--border:#2c313c;--text:#e6e9ef;--muted:#9aa3b2;
+  --accent:#5aa9ff;--green:#36c08f;--amber:#e0b34a;--red:#ff6b6b;--chip:#262b36;
+  --code-bg:#1e232d;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);
+  font-family:system-ui,-apple-system,"Segoe UI","Noto Sans JP",Meiryo,sans-serif;
+  line-height:1.6;padding:18px;font-size:14px}
+h1{font-size:18px;margin:0 0 4px}
+h2{font-size:15px;margin:22px 0 8px;display:flex;align-items:center;gap:8px}
+h2 .num{display:inline-grid;place-items:center;width:22px;height:22px;border-radius:50%;
+  background:var(--accent);color:#fff;font-size:12px;font-weight:700;flex-shrink:0}
+.lead{color:var(--muted);margin:0 0 6px;font-size:13px}
+.card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px;margin:10px 0}
+.badges{display:inline-flex;gap:5px;flex-wrap:wrap;vertical-align:middle;margin-left:6px}
+.badge{font-size:11px;border-radius:6px;padding:1px 7px;border:1px solid var(--border);background:var(--chip);color:var(--muted)}
+.badge.imp-high{background:#fde8e6;color:var(--red);border-color:#f6c9c5}
+.badge.imp-medium{background:#fff2d6;color:var(--amber);border-color:#f0debf}
+.badge.diff-high{background:#e7e0ff;color:#5a3bd0;border-color:#d2c6f7}
+.badge.diff-medium{background:#ede7ff;color:#7c52d4;border-color:#d8ccf6}
+.badge.conf{background:#e3f3ec;color:var(--green);border-color:#c3e6d6}
+
+/* Architecture layers */
+.layers{display:flex;flex-direction:column;gap:8px}
+.layer{border-radius:10px;padding:10px 14px;border:1px solid var(--border)}
+.layer-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:6px}
+.layer-cli{border-left:4px solid var(--accent);background:color-mix(in srgb,var(--accent) 6%,var(--card))}
+.layer-ui{border-left:4px solid var(--green);background:color-mix(in srgb,var(--green) 6%,var(--card))}
+.layer-tmpl{border-left:4px solid var(--amber);background:color-mix(in srgb,var(--amber) 6%,var(--card))}
+.layer-infra{border-left:4px solid #888;background:color-mix(in srgb,#888 6%,var(--card))}
+.modules{display:flex;gap:8px;flex-wrap:wrap}
+.mod{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:4px 10px;font-size:12px;font-family:ui-monospace,Menlo,Consolas,monospace}
+
+/* Flow */
+.flow{display:flex;flex-direction:column;gap:0}
+.flow-step{display:flex;align-items:flex-start;gap:10px;padding:8px 0}
+.flow-step+.flow-step{border-top:1px solid var(--border)}
+.step-num{display:inline-grid;place-items:center;width:24px;height:24px;border-radius:50%;
+  border:2px solid var(--accent);color:var(--accent);font-size:11px;font-weight:700;flex-shrink:0;margin-top:1px}
+.step-body{flex:1}
+.step-title{font-weight:600;font-size:13px}
+.step-detail{color:var(--muted);font-size:12px;margin-top:2px}
+code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;
+  background:var(--code-bg);padding:1px 5px;border-radius:4px}
+
+/* Relations */
+.rel{display:flex;gap:8px;align-items:baseline;margin:6px 0;flex-wrap:wrap}
+.rel .from{font-weight:600;font-size:13px}
+.rel .to{font-weight:600;font-size:13px}
+.rel .arrow{color:var(--accent);font-family:ui-monospace,Menlo,Consolas,monospace}
+.rel .why{color:var(--muted);font-size:12px}
+
+/* Tasks */
+.task-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:8px}
+.task-card{border:1px solid var(--border);border-radius:8px;padding:10px 12px;background:var(--card)}
+.task-card .task-num{font-size:11px;color:var(--accent);font-weight:700}
+.task-card .task-name{font-size:13px;font-weight:600;margin:2px 0}
+.task-card .task-files{font-size:11px;color:var(--muted);font-family:ui-monospace,Menlo,Consolas,monospace}
+.task-card.setup{border-top:3px solid var(--muted)}
+.task-card.feat{border-top:3px solid var(--accent)}
+.task-card.infra{border-top:3px solid var(--green)}
+
+/* Risk */
+.risk{border-left:3px solid var(--red);padding:8px 12px;margin:8px 0;border-radius:0 8px 8px 0;background:color-mix(in srgb,var(--red) 5%,var(--card))}
+.risk.sev-medium{border-left-color:var(--amber);background:color-mix(in srgb,var(--amber) 5%,var(--card))}
+.risk-title{font-weight:600;font-size:13px}
+.risk-desc{color:var(--muted);font-size:12px;margin-top:3px}
+
+/* Questions */
+.q{background:var(--chip);border-radius:8px;padding:8px 12px;margin:6px 0}
+.q .why{color:var(--muted);font-size:12px;margin-top:3px}
+
+/* Sources */
+.src-list{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;color:var(--muted)}
+.src-list div{padding:3px 0;border-bottom:1px solid var(--border)}
+.src-list div:last-child{border:none}
+.src-list b{color:var(--text)}
+
+/* Concept block */
+.concept{padding:8px 0;border-bottom:1px solid var(--border)}
+.concept:last-child{border:none}
+.concept h3{margin:0;font-size:13px;display:flex;flex-wrap:wrap;align-items:center;gap:4px}
+.concept p{margin:3px 0;color:var(--muted);font-size:12px}
+
+/* Toolbar */
+.toolbar{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0 4px}
+.toolbar button{border:1px solid var(--border);background:var(--card);border-radius:999px;
+  padding:4px 12px;font-size:12px;cursor:pointer;color:var(--muted)}
+.toolbar button[aria-pressed="true"]{background:var(--accent);color:#fff;border-color:var(--accent)}
+.toolbar button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.concept.hidden{display:none}
+
+footer{margin-top:18px;color:var(--muted);font-size:12px;border-top:1px solid var(--border);padding-top:10px}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+</head>
+<body>
+<header>
+  <h1>xeikit Go CLI — 設計・実装ビュー</h1>
+  <p class="lead">アーキテクチャ層 / 依存関係 / 実行フロー / タスク一覧 / リスク — オーナーエンジニア向け</p>
+  <p class="lead">出典: <code>docs/superpowers/specs/2026-06-24-xeikit-go-cli-design.md</code> +
+    <code>docs/superpowers/plans/2026-06-24-xeikit-go-cli.md</code></p>
+</header>
+
+<!-- ① アーキテクチャ層 -->
+<h2><span class="num">1</span>アーキテクチャ層</h2>
+<div class="card">
+  <div class="layers">
+    <div class="layer layer-cli">
+      <div class="layer-label">CLI 層</div>
+      <div class="modules">
+        <span class="mod">cmd/xeikit/main.go</span>
+        <span class="mod">internal/cli/root.go</span>
+        <span class="mod">internal/cli/new.go</span>
+      </div>
+    </div>
+    <div class="layer layer-ui">
+      <div class="layer-label">UI 層</div>
+      <div class="modules">
+        <span class="mod">internal/ui/prompt.go</span>
+        <span class="mod">charmbracelet/huh</span>
+      </div>
+    </div>
+    <div class="layer layer-tmpl">
+      <div class="layer-label">Template 層</div>
+      <div class="modules">
+        <span class="mod">internal/template/source.go (interface)</span>
+        <span class="mod">internal/template/github.go</span>
+        <span class="mod">internal/template/local.go</span>
+      </div>
+    </div>
+    <div class="layer layer-infra">
+      <div class="layer-label">インフラ / リリース</div>
+      <div class="modules">
+        <span class="mod">release-please</span>
+        <span class="mod">goreleaser</span>
+        <span class="mod">golangci-lint</span>
+        <span class="mod">XeicuLy/starter-kit</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ② xeikit new 実行フロー -->
+<h2><span class="num">2</span><code>xeikit new</code> 実行フロー</h2>
+<div class="card">
+  <div class="flow">
+    <div class="flow-step">
+      <div class="step-num">1</div>
+      <div class="step-body">
+        <div class="step-title">manifest.json を取得</div>
+        <div class="step-detail"><code>GitHubSource.ListTemplates()</code> → <code>github.com/XeicuLy/starter-kit/raw/main/manifest.json</code> を HTTP GET</div>
+      </div>
+    </div>
+    <div class="flow-step">
+      <div class="step-num">2</div>
+      <div class="step-body">
+        <div class="step-title">huh フォームでユーザー入力</div>
+        <div class="step-detail"><code>ui.AskProjectConfig(templates)</code> → プロジェクト名 + テンプレート選択</div>
+      </div>
+    </div>
+    <div class="flow-step">
+      <div class="step-num">3</div>
+      <div class="step-body">
+        <div class="step-title">tar.gz ダウンロード & 展開</div>
+        <div class="step-detail"><code>GitHubSource.Fetch(id, destDir)</code> → <code>codeload.github.com/XeicuLy/starter-kit/tar.gz/refs/heads/main</code> → <code>extractTemplate()</code> で <code>starter-kit-main/templates/&lt;id&gt;/</code> のみ展開</div>
+      </div>
+    </div>
+    <div class="flow-step">
+      <div class="step-num">4</div>
+      <div class="step-body">
+        <div class="step-title">完了メッセージ出力</div>
+        <div class="step-detail"><code>✓ &lt;name&gt;/ を作成しました</code> → <code>cd &lt;name&gt; / pnpm install</code></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ③ 重要概念 -->
+<h2><span class="num">3</span>重要概念</h2>
+<div class="toolbar" role="group" aria-label="重要度フィルタ">
+  <button type="button" id="f-all" aria-pressed="true">すべて</button>
+  <button type="button" id="f-high" aria-pressed="false">重要度 high のみ</button>
+</div>
+<div class="card" id="concepts">
+  <div class="concept" data-importance="high">
+    <h3>TemplateSource インターフェース
+      <span class="badges">
+        <span class="badge imp-high">重要度 high</span>
+        <span class="badge diff-medium">難易度 medium</span>
+        <span class="badge conf">confidence 1.0</span>
+      </span>
+    </h3>
+    <p><code>ListTemplates()</code> と <code>Fetch(id, destDir)</code> の2メソッド。テスタビリティの核。</p>
+    <p><code>internal/template/source.go</code></p>
+  </div>
+  <div class="concept" data-importance="high">
+    <h3>GitHubSource
+      <span class="badges">
+        <span class="badge imp-high">重要度 high</span>
+        <span class="badge diff-high">難易度 high</span>
+        <span class="badge conf">confidence 1.0</span>
+      </span>
+    </h3>
+    <p>本番実装。Go標準ライブラリ(<code>archive/tar</code> + <code>compress/gzip</code>)のみで tar.gz 展開。外部依存ゼロ。</p>
+    <p><code>internal/template/github.go</code></p>
+  </div>
+  <div class="concept" data-importance="high">
+    <h3>new サブコマンド
+      <span class="badges">
+        <span class="badge imp-high">重要度 high</span>
+        <span class="badge diff-medium">難易度 medium</span>
+        <span class="badge conf">confidence 1.0</span>
+      </span>
+    </h3>
+    <p>全フロー（一覧取得 → TUI → Fetch → 展開）を繋ぐオーケストレーター。</p>
+    <p><code>internal/cli/new.go</code></p>
+  </div>
+  <div class="concept" data-importance="high">
+    <h3>release-please → goreleaser
+      <span class="badges">
+        <span class="badge imp-high">重要度 high</span>
+        <span class="badge diff-medium">難易度 medium</span>
+        <span class="badge conf">confidence 0.95</span>
+      </span>
+    </h3>
+    <p>conventional commits → Release PR 自動生成 → マージでタグ作成 → goreleaser がバイナリビルド。</p>
+    <p><code>.github/workflows/release.yml</code> / <code>.goreleaser.yaml</code></p>
+  </div>
+  <div class="concept" data-importance="medium">
+    <h3>LocalSource
+      <span class="badges">
+        <span class="badge imp-medium">重要度 medium</span>
+        <span class="badge">難易度 low</span>
+        <span class="badge conf">confidence 1.0</span>
+      </span>
+    </h3>
+    <p>テスト専用実装。<code>testdata/</code> 以下のフィクスチャを使い、GitHub への実アクセスを排除。</p>
+    <p><code>internal/template/local.go</code></p>
+  </div>
+  <div class="concept" data-importance="medium">
+    <h3>huh TUI フォーム
+      <span class="badges">
+        <span class="badge imp-medium">重要度 medium</span>
+        <span class="badge diff-medium">難易度 medium</span>
+        <span class="badge conf">confidence 0.9</span>
+      </span>
+    </h3>
+    <p><code>charmbracelet/huh</code> によるプロジェクト名入力・テンプレート選択UI。自動テストが困難な層。</p>
+    <p><code>internal/ui/prompt.go</code></p>
+  </div>
+</div>
+
+<!-- ④ 依存関係 -->
+<h2><span class="num">4</span>依存関係（主要）</h2>
+<div class="card">
+  <div class="rel">
+    <span class="from">new.go</span>
+    <span class="arrow">—depends_on→</span>
+    <span class="to">TemplateSource</span>
+    <span class="why">インターフェース越しに一覧取得・展開を委譲</span>
+  </div>
+  <div class="rel">
+    <span class="from">new.go</span>
+    <span class="arrow">—calls→</span>
+    <span class="to">AskProjectConfig</span>
+    <span class="why">ユーザー入力を UI 層に委譲</span>
+  </div>
+  <div class="rel">
+    <span class="from">GitHubSource</span>
+    <span class="arrow">—supports→</span>
+    <span class="to">TemplateSource</span>
+    <span class="why">本番実装（interface を実装）</span>
+  </div>
+  <div class="rel">
+    <span class="from">LocalSource</span>
+    <span class="arrow">—supports→</span>
+    <span class="to">TemplateSource</span>
+    <span class="why">テスト実装（httptest で差し替え）</span>
+  </div>
+  <div class="rel">
+    <span class="from">GitHubSource</span>
+    <span class="arrow">—depends_on→</span>
+    <span class="to">XeicuLy/starter-kit</span>
+    <span class="why">manifest.json + tar.gz を HTTP で取得</span>
+  </div>
+  <div class="rel">
+    <span class="from">release-please</span>
+    <span class="arrow">—sequence_next→</span>
+    <span class="to">goreleaser</span>
+    <span class="why">PR マージ → タグ作成 → goreleaser 起動</span>
+  </div>
+</div>
+
+<!-- ⑤ 実装タスク一覧 -->
+<h2><span class="num">5</span>実装タスク一覧（12タスク）</h2>
+<div class="card">
+  <div class="task-grid">
+    <div class="task-card setup">
+      <div class="task-num">Task 1</div>
+      <div class="task-name">Go モジュール設定</div>
+      <div class="task-files">go.mod / cmd/xeikit/main.go</div>
+    </div>
+    <div class="task-card feat">
+      <div class="task-num">Task 2</div>
+      <div class="task-name">Template 型定義</div>
+      <div class="task-files">internal/template/source.go</div>
+    </div>
+    <div class="task-card setup">
+      <div class="task-num">Task 3</div>
+      <div class="task-name">testdata フィクスチャ</div>
+      <div class="task-files">testdata/manifest.json + templates/</div>
+    </div>
+    <div class="task-card feat">
+      <div class="task-num">Task 4</div>
+      <div class="task-name">LocalSource 実装</div>
+      <div class="task-files">internal/template/local.go + test</div>
+    </div>
+    <div class="task-card feat">
+      <div class="task-num">Task 5</div>
+      <div class="task-name">GitHubSource 実装</div>
+      <div class="task-files">internal/template/github.go + test</div>
+    </div>
+    <div class="task-card feat">
+      <div class="task-num">Task 6</div>
+      <div class="task-name">huh UI プロンプト</div>
+      <div class="task-files">internal/ui/prompt.go</div>
+    </div>
+    <div class="task-card feat">
+      <div class="task-num">Task 7</div>
+      <div class="task-name">Cobra root command</div>
+      <div class="task-files">internal/cli/root.go + test</div>
+    </div>
+    <div class="task-card feat">
+      <div class="task-num">Task 8</div>
+      <div class="task-name">new サブコマンド</div>
+      <div class="task-files">internal/cli/new.go</div>
+    </div>
+    <div class="task-card infra">
+      <div class="task-num">Task 9</div>
+      <div class="task-name">CI ワークフロー</div>
+      <div class="task-files">.github/workflows/ci.yml</div>
+    </div>
+    <div class="task-card infra">
+      <div class="task-num">Task 10</div>
+      <div class="task-name">goreleaser 設定</div>
+      <div class="task-files">.goreleaser.yaml</div>
+    </div>
+    <div class="task-card infra">
+      <div class="task-num">Task 11</div>
+      <div class="task-name">リリースワークフロー</div>
+      <div class="task-files">.github/workflows/release.yml</div>
+    </div>
+    <div class="task-card setup">
+      <div class="task-num">Task 12</div>
+      <div class="task-name">README 更新</div>
+      <div class="task-files">README.md</div>
+    </div>
+  </div>
+  <p style="margin:10px 0 0;font-size:12px;color:var(--muted)">
+    <span style="border-top:3px solid var(--muted);display:inline-block;width:16px;vertical-align:middle"></span> セットアップ
+    <span style="border-top:3px solid var(--accent);display:inline-block;width:16px;vertical-align:middle"></span> 機能実装
+    <span style="border-top:3px solid var(--green);display:inline-block;width:16px;vertical-align:middle"></span> インフラ
+  </p>
+</div>
+
+<!-- ⑥ リスク -->
+<h2><span class="num">6</span>リスク</h2>
+<div class="card">
+  <div class="risk">
+    <div class="risk-title">tar.gz 展開時のパストラバーサル（severity: medium）</div>
+    <div class="risk-desc">悪意ある <code>../../</code> を含む tar エントリを展開するリスク。starter-kit は自分で管理するため実害は低いが、外部テンプレートを許可する場合は要対処。関連: <code>github.go / extractTemplate()</code></div>
+  </div>
+  <div class="risk sev-medium">
+    <div class="risk-title">huh フォームの自動テストが困難（severity: low）</div>
+    <div class="risk-desc"><code>charmbracelet/huh</code> はターミナルを必要とするため、<code>prompt.go</code> の動作確認は手動のみ。テストカバレッジに空白が生まれる。</div>
+  </div>
+</div>
+
+<!-- ⑦ 次に読むべき箇所 -->
+<h2><span class="num">7</span>次に読むべき箇所（着手順）</h2>
+<div class="card">
+  <ol style="margin:0;padding-left:20px">
+    <li style="margin:6px 0"><code>internal/template/source.go</code> — インターフェース定義。全ての土台。</li>
+    <li style="margin:6px 0"><code>internal/template/github.go</code> の <code>extractTemplate()</code> — tar.gz 展開の核心ロジック。難易度 high。</li>
+    <li style="margin:6px 0"><code>internal/template/local.go</code> + <code>testdata/</code> — テスト戦略を理解する。</li>
+    <li style="margin:6px 0"><code>internal/cli/new.go</code> — 全コンポーネントを繋ぐオーケストレーター。</li>
+    <li style="margin:6px 0"><code>.github/workflows/release.yml</code> — release-please → goreleaser の連携フロー。</li>
+  </ol>
+</div>
+
+<!-- ⑧ 次にAIへ聞くとよい質問 -->
+<h2><span class="num">8</span>次に AI へ聞くとよい質問</h2>
+<div class="card">
+  <div class="q">
+    テンプレート展開時に <code>package.json</code> の <code>name</code> フィールドをプロジェクト名に自動置換する場合、どこに処理を追加するのが最もクリーンか？
+    <div class="why">現設計では tar.gz を展開するだけで置換なし。v0.x で必要になった際の拡張ポイントを確認しておく価値がある。</div>
+  </div>
+  <div class="q">
+    GitHub の unauthenticated レート制限（60 req/h）に対して、将来的にトークン認証を追加する場合、<code>GitHubSource</code> のどのフィールドを拡張すればよいか？
+    <div class="why">現在は個人利用で問題ないが、設計の拡張ポイントを把握しておくと後で迷わない。</div>
+  </div>
+  <div class="q">
+    <code>extractTemplate()</code> でパストラバーサルを防ぐ最小限の追加チェックは？
+    <div class="why">セキュリティリスクの severity: medium。外部テンプレートを許可する前に対処が必要。</div>
+  </div>
+</div>
+
+<!-- ⑨ 出典 -->
+<h2><span class="num">9</span>出典</h2>
+<div class="card src-list">
+  <div><b>docs/superpowers/specs/2026-06-24-xeikit-go-cli-design.md</b> — xeikit Go CLI 設計仕様書</div>
+  <div><b>docs/superpowers/plans/2026-06-24-xeikit-go-cli.md</b> — xeikit Go CLI 実装計画（Task 1–12）</div>
+</div>
+
+<footer>このビューは設計・実装計画の理解補助です。確実なことはスペックと計画ドキュメントを直接確認してください。</footer>
+
+<script>
+(function(){
+  "use strict";
+  function applyTheme(){
+    var m=(window.location.hash||"").match(/theme=(dark|light)/);
+    if(m&&m[1]==="dark"){document.documentElement.setAttribute("data-theme","dark");}
+    else{document.documentElement.removeAttribute("data-theme");}
+  }
+  applyTheme();
+  window.addEventListener("hashchange",applyTheme);
+
+  var concepts=document.querySelectorAll(".concept");
+  var btnAll=document.getElementById("f-all");
+  var btnHigh=document.getElementById("f-high");
+  function setFilter(onlyHigh){
+    for(var i=0;i<concepts.length;i++){
+      var keep=!onlyHigh||concepts[i].getAttribute("data-importance")==="high";
+      concepts[i].classList.toggle("hidden",!keep);
+    }
+    btnAll.setAttribute("aria-pressed",onlyHigh?"false":"true");
+    btnHigh.setAttribute("aria-pressed",onlyHigh?"true":"false");
+  }
+  btnAll.addEventListener("click",function(){setFilter(false);});
+  btnHigh.addEventListener("click",function(){setFilter(true);});
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,229 @@
+version: core/v1
+
+target:
+  type: spec
+  title: "xeikit Go CLI — 設計・実装計画"
+  summary: "Go製のプロジェクトスキャフォールディングCLI。`xeikit new` でTUIテンプレート選択 → GitHub tar.gz取得 → プロジェクト展開を行う。Cobra + charmbracelet/huh + goreleaser + release-pleaseで構成される。"
+  source_label: "docs/superpowers/specs/2026-06-24-xeikit-go-cli-design.md + plans/2026-06-24-xeikit-go-cli.md"
+
+concepts:
+  - id: c_cli
+    label: "xeikit CLI"
+    kind: module
+    summary: "バイナリ名 `xeikit`、メインコマンドは `xeikit new`。個人リポジトリ XeicuLy/create-app-cli として管理。"
+    importance: high
+    difficulty: low
+    confidence: 1.0
+    source_refs:
+      - id: r_spec
+        path: "docs/superpowers/specs/2026-06-24-xeikit-go-cli-design.md"
+        excerpt: "xeikit new — プロジェクト作成（メインコマンド）"
+
+  - id: c_cobra_root
+    label: "Cobra root command"
+    kind: module
+    summary: "`internal/cli/root.go` — `NewRootCmd(version string)` が cobra.Command を返す。`new` サブコマンドを AddCommand で登録。"
+    importance: high
+    difficulty: low
+    confidence: 1.0
+    source_refs:
+      - id: r_plan_root
+        path: "docs/superpowers/plans/2026-06-24-xeikit-go-cli.md"
+        excerpt: "Task 7: Cobra ルートコマンドの実装"
+
+  - id: c_new_cmd
+    label: "new サブコマンド"
+    kind: module
+    summary: "`internal/cli/new.go` — GitHubSource でテンプレート一覧取得 → huh フォーム → Fetch → ディレクトリ展開の一連のフローを制御する。"
+    importance: high
+    difficulty: medium
+    confidence: 1.0
+    source_refs:
+      - id: r_plan_new
+        path: "docs/superpowers/plans/2026-06-24-xeikit-go-cli.md"
+        excerpt: "Task 8: new サブコマンドの実装"
+
+  - id: c_template_source
+    label: "TemplateSource インターフェース"
+    kind: concept
+    summary: "`internal/template/source.go` — `ListTemplates()` と `Fetch(id, destDir)` の2メソッドで定義。本番はGitHubSource、テスト時はLocalSourceに差し替え。"
+    detail: "このインターフェースがテスタビリティの核。httptest モックサーバーでネットワークアクセスを排除できる。"
+    importance: high
+    difficulty: medium
+    confidence: 1.0
+    source_refs:
+      - id: r_source
+        path: "internal/template/source.go"
+        excerpt: "type TemplateSource interface { ListTemplates() ([]Template, error); Fetch(id, destDir string) error }"
+
+  - id: c_github_source
+    label: "GitHubSource"
+    kind: module
+    summary: "`internal/template/github.go` — manifest.json をHTTP GETで取得し、tar.gz をダウンロード・展開する本番実装。"
+    detail: "tar.gz の展開は Go 標準ライブラリ(archive/tar + compress/gzip)のみで実現。外部依存ゼロ。"
+    importance: high
+    difficulty: high
+    confidence: 1.0
+    source_refs:
+      - id: r_github
+        path: "internal/template/github.go"
+        excerpt: "extractTemplate: starter-kit-main/templates/<id>/ プレフィックスのエントリのみ展開"
+
+  - id: c_local_source
+    label: "LocalSource"
+    kind: module
+    summary: "`internal/template/local.go` — testdata/ ディレクトリからテンプレートを読むテスト専用実装。"
+    importance: medium
+    difficulty: low
+    confidence: 1.0
+
+  - id: c_huh_prompt
+    label: "huh TUI フォーム"
+    kind: module
+    summary: "`internal/ui/prompt.go` — charmbracelet/huh でプロジェクト名入力とテンプレート選択UIを提供。`AskProjectConfig(templates) (ProjectConfig, error)` を公開。"
+    importance: high
+    difficulty: medium
+    confidence: 0.9
+
+  - id: c_manifest
+    label: "manifest.json"
+    kind: concept
+    summary: "XeicuLy/starter-kit の raw URLから取得するテンプレートメタデータ。`{id, name, description}[]` の配列を持つ。"
+    importance: medium
+    difficulty: low
+    confidence: 1.0
+    source_refs:
+      - id: r_manifest
+        path: "testdata/manifest.json"
+        excerpt: '{"templates": [{"id": "tanstack-start-hono-cf", ...}]}'
+
+  - id: c_starter_kit
+    label: "XeicuLy/starter-kit"
+    kind: module
+    summary: "テンプレート置き場リポジトリ。`templates/<id>/` 以下にテンプレートファイルを配置。初期テンプレートは tanstack-start-hono-cf のみ。"
+    importance: high
+    difficulty: low
+    confidence: 1.0
+
+  - id: c_goreleaser
+    label: "goreleaser"
+    kind: concept
+    summary: ".goreleaser.yaml でクロスプラットフォームビルドを定義。darwin/linux/windows × amd64/arm64 のバイナリを生成しGitHub Releasesに公開。"
+    importance: high
+    difficulty: medium
+    confidence: 1.0
+
+  - id: c_release_please
+    label: "release-please"
+    kind: concept
+    summary: "conventional commits を解析して Release PR を自動作成。PRマージでタグ生成 → goreleaser 起動というフローの起点。Google製で活発にメンテ。"
+    importance: high
+    difficulty: medium
+    confidence: 0.95
+
+  - id: c_tanstack_hono_cf
+    label: "tanstack-start-hono-cf テンプレート"
+    kind: concept
+    summary: "初期唯一のテンプレート。TanStack Start + Hono + Cloudflare Workers 構成。sprout-app の技術スタックをベースにしたフルスタック構成。"
+    importance: medium
+    difficulty: low
+    confidence: 1.0
+
+relations:
+  - id: rel_new_uses_source
+    from: c_new_cmd
+    to: c_template_source
+    type: depends_on
+    label: "テンプレート操作を委譲"
+    reason: "new コマンドはインターフェース越しにテンプレート一覧取得・展開を行い、本番/テストを切り替えられる"
+    confidence: 1.0
+
+  - id: rel_new_calls_huh
+    from: c_new_cmd
+    to: c_huh_prompt
+    type: calls
+    label: "AskProjectConfig を呼ぶ"
+    reason: "ユーザー入力（プロジェクト名・テンプレート選択）をUIに委譲"
+    confidence: 1.0
+
+  - id: rel_github_implements
+    from: c_github_source
+    to: c_template_source
+    type: supports
+    label: "本番実装"
+    reason: "GitHubSource は TemplateSource インターフェースを実装する"
+    confidence: 1.0
+
+  - id: rel_local_implements
+    from: c_local_source
+    to: c_template_source
+    type: supports
+    label: "テスト実装"
+    reason: "LocalSource は TemplateSource インターフェースを実装し、テスト時に差し替えて使う"
+    confidence: 1.0
+
+  - id: rel_github_fetches_manifest
+    from: c_github_source
+    to: c_manifest
+    type: depends_on
+    label: "manifest.json を取得"
+    reason: "ListTemplates() で manifest.json を HTTP GET してテンプレート一覧を得る"
+    confidence: 1.0
+
+  - id: rel_github_fetches_starter
+    from: c_github_source
+    to: c_starter_kit
+    type: depends_on
+    label: "tar.gz をダウンロード"
+    reason: "Fetch() で starter-kit の tar.gz を取得しテンプレートを展開する"
+    confidence: 1.0
+
+  - id: rel_rp_triggers_gr
+    from: c_release_please
+    to: c_goreleaser
+    type: sequence_next
+    label: "タグ生成後に起動"
+    reason: "release-please が PR マージ後にタグを作成し、それを受けて goreleaser が起動する"
+    confidence: 0.95
+
+  - id: rel_root_contains_new
+    from: c_cobra_root
+    to: c_new_cmd
+    type: contains
+    label: "AddCommand"
+    reason: "root コマンドが new サブコマンドを登録する"
+    confidence: 1.0
+
+questions:
+  - id: q_template_vars
+    question: "テンプレート展開時にプロジェクト名を package.json の name フィールドに自動置換するか？"
+    why_it_matters: "現在の設計では tar.gz を展開するだけで置換処理は含まれていない。v0.1.0 の範囲外だが後で必要になる可能性が高い。"
+    related_concept_ids: [c_github_source, c_new_cmd]
+
+  - id: q_rate_limit
+    question: "GitHub API のレート制限（unauthenticated: 60req/h）は実用上問題にならないか？"
+    why_it_matters: "manifest.json 取得と tar.gz DL で最低2リクエスト消費する。個人利用なら問題ないが、将来的に認証トークン対応が必要になる可能性がある。"
+    related_concept_ids: [c_github_source, c_manifest]
+
+risks:
+  - id: risk_path_traversal
+    label: "tar.gz 展開時のパストラバーサル"
+    description: "悪意ある tar.gz エントリに `../../` を含むパスがある場合、`filepath.Join` でも完全には防げない可能性がある。starter-kit は自分で管理するため実害は低いが、外部テンプレートを許可する場合は注意が必要。"
+    severity: medium
+    related_concept_ids: [c_github_source]
+
+  - id: risk_huh_no_test
+    label: "huh フォームの自動テストが困難"
+    description: "charmbracelet/huh はターミナルを必要とするため、CI での自動テストが書けない。prompt.go のロジックは手動確認のみになる。"
+    severity: low
+    related_concept_ids: [c_huh_prompt]
+
+source_refs:
+  - id: sr_spec
+    title: "xeikit Go CLI 設計仕様書"
+    type: document
+    path: "docs/superpowers/specs/2026-06-24-xeikit-go-cli-design.md"
+  - id: sr_plan
+    title: "xeikit Go CLI 実装計画"
+    type: document
+    path: "docs/superpowers/plans/2026-06-24-xeikit-go-cli.md"

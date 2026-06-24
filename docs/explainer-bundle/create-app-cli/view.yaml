@@ -1,0 +1,65 @@
+version: view/v1
+
+# 想定: 自分で設計した CLI を実装に移る前に全体像を整理したいオーナーエンジニア
+# ファミリア度は高い（設計議論に参加済み）なので、詳細より構造・依存・リスクを前面に出す
+
+audience:
+  role: engineer
+  familiarity: advanced
+  stated_preferences:
+    - dependency_map
+    - sequence
+    - cards
+  dislikes:
+    - beginner_tutorial
+    - dense_table
+
+intent:
+  primary_goal: "設計と実装計画の全体像を一目で把握し、タスク着手順序と注意点を確認する"
+  secondary_goals:
+    - "アーキテクチャ層（CLI / UI / Template）の依存関係を視覚的に理解する"
+    - "リリースフロー（release-please → goreleaser）の流れを確認する"
+    - "未解決リスク・疑問点を把握する"
+
+presentation:
+  preferred_forms:
+    - dependency_map
+    - sequence
+    - cards
+    - risk_map
+  avoid_forms:
+    - beginner_tutorial
+    - dense_table
+    - glossary
+  density: medium
+  tone: concise
+  visual_style: "クリーン・モノクロベース・Go らしいシンプルさ。コードブロックは等幅フォント。"
+  interaction_level: medium
+
+focus:
+  emphasize:
+    - dependencies
+    - reading_order
+    - risks
+    - purpose
+  de_emphasize:
+    - minor_details
+    - boilerplate_steps
+
+html_generation_policy:
+  allow_creative_layout: true
+  must_include:
+    - overview
+    - dependency_map
+    - reading_order
+    - source_references
+    - prompt_templates
+  should_include:
+    - progressive_disclosure
+    - risk_map
+    - sequence_view
+    - visual_grouping
+  must_not_include:
+    - external_script
+    - remote_css
+    - network_request
