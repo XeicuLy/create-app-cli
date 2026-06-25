@@ -1,0 +1,9 @@
+{
+  "templates": [
+    {
+      "id": "tanstack-start-hono-cf",
+      "name": "TanStack Start + Hono (CF Workers)",
+      "description": "TanStack Start + Hono deployed to Cloudflare Workers"
+    }
+  ]
+}
