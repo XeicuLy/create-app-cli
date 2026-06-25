@@ -2,13 +2,13 @@
 
 setup:
 	mise install
-	go mod download
+	mise exec -- go mod download
 
 build:
-	go build -o xeikit ./cmd/xeikit
+	mise exec -- go build -o xeikit ./cmd/xeikit
 
 test:
-	go test ./... -race -v
+	mise exec -- go test ./... -race -v
 
 lint:
-	golangci-lint run
+	mise exec -- golangci-lint run
