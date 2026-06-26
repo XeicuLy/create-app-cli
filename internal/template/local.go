@@ -2,10 +2,12 @@ package template
 
 import (
 	"encoding/json"
+	"fmt"
 	"io"
 	"io/fs"
 	"os"
 	"path/filepath"
+	"strings"
 )
 
 type LocalSource struct {
@@ -25,7 +27,18 @@ func (s LocalSource) ListTemplates() ([]Template, error) {
 }
 
 func (s LocalSource) Fetch(id, destDir string) error {
-	return copyDir(filepath.Join(s.BasePath, "templates", id), destDir)
+	root := filepath.Join(s.BasePath, "templates")
+	src := filepath.Join(root, filepath.Clean(id))
+
+	rel, err := filepath.Rel(root, src)
+	if err != nil {
+		return err
+	}
+	if rel == ".." || strings.HasPrefix(rel, ".."+string(os.PathSeparator)) {
+		return fmt.Errorf("invalid template id: %q", id)
+	}
+
+	return copyDir(src, destDir)
 }
 
 func copyDir(src, dst string) error {
@@ -45,18 +58,26 @@ func copyDir(src, dst string) error {
 	})
 }
 
-func copyFile(src, dst string) error {
+func copyFile(src, dst string) (err error) {
 	in, err := os.Open(src)
 	if err != nil {
 		return err
 	}
-	defer in.Close()
+	defer func() {
+		if cerr := in.Close(); err == nil && cerr != nil {
+			err = cerr
+		}
+	}()
 
 	out, err := os.Create(dst)
 	if err != nil {
 		return err
 	}
-	defer out.Close()
+	defer func() {
+		if cerr := out.Close(); err == nil && cerr != nil {
+			err = cerr
+		}
+	}()
 
 	_, err = io.Copy(out, in)
 	return err

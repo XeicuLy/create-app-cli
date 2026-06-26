@@ -47,4 +47,28 @@ func TestLocalSource_Fetch(t *testing.T) {
 	if string(content) != wantContent {
 		t.Errorf("package.json content =\n%s\nwant:\n%s", content, wantContent)
 	}
+
+	nestedPath := filepath.Join(destDir, "src", "index.ts")
+	nestedContent, err := os.ReadFile(nestedPath)
+	if err != nil {
+		t.Fatalf("src/index.ts not found in dest: %v", err)
+	}
+	if string(nestedContent) != "export default {};\n" {
+		t.Errorf("src/index.ts content = %q, want %q", nestedContent, "export default {};\n")
+	}
+}
+
+func TestLocalSource_Fetch_RejectsPathTraversal(t *testing.T) {
+	src := LocalSource{BasePath: "../../testdata"}
+	destDir := t.TempDir()
+
+	traversalIDs := []string{
+		"..",           // resolves to testdata/ — copies the entire base directory
+		"../other-dir", // resolves to testdata/other-dir — escapes templates/
+	}
+	for _, id := range traversalIDs {
+		if err := src.Fetch(id, destDir); err == nil {
+			t.Errorf("Fetch(%q) should return error for path traversal, got nil", id)
+		}
+	}
 }
