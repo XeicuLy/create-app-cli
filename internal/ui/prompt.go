@@ -2,6 +2,7 @@ package ui
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/XeicuLy/create-app-cli/internal/template"
 	"github.com/charmbracelet/huh"
@@ -13,8 +14,19 @@ type ProjectConfig struct {
 	TemplateID string
 }
 
+func validateProjectName(s string) error {
+	if strings.TrimSpace(s) == "" {
+		return fmt.Errorf("プロジェクト名は必須です")
+	}
+	return nil
+}
+
 // AskProjectConfig runs an interactive huh form and returns the user's input.
 func AskProjectConfig(templates []template.Template) (ProjectConfig, error) {
+	if len(templates) == 0 {
+		return ProjectConfig{}, fmt.Errorf("選択可能なテンプレートがありません")
+	}
+
 	var cfg ProjectConfig
 
 	options := make([]huh.Option[string], len(templates))
@@ -27,12 +39,7 @@ func AskProjectConfig(templates []template.Template) (ProjectConfig, error) {
 			huh.NewInput().
 				Title("プロジェクト名を入力してください").
 				Value(&cfg.Name).
-				Validate(func(s string) error {
-					if s == "" {
-						return fmt.Errorf("プロジェクト名は必須です")
-					}
-					return nil
-				}),
+				Validate(validateProjectName),
 			huh.NewSelect[string]().
 				Title("テンプレートを選択してください").
 				Options(options...).
